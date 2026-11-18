@@ -1,5 +1,15 @@
 # go-opcua Releases
 
+## Unreleased
+
+### Added
+
+- server: `Node.SetValueWriter(ValueWriter)` hands clients' Writes of a Variable's Value to the application (`ValueWrite`: the session, the node, the value with the server's SourceTimestamp, an IndexRange merged). The writer's status is the operation's result and the server does not store the value. AccessLevel, UserAccessLevel, AccessRestrictions and the `AccessController` apply first. Writers run off the request dispatcher: a slow writer (a device write with read-back) holds up only its own Write request, which keeps its in-flight slot until it is answered; one session's writes reach the writers in order; `ctx` ends at `Close` (which waits for them) or when the TimeoutHint elapses; a panic fails the operation with `Bad_InternalError`.
+- server: `Server.CloseSession(sessionID)` ends a session on the application's behalf (a user disabled or given another role): subscriptions deleted, queued Publish requests answered with `Bad_SessionClosed`, continuation points released, the `SessionObserver` told `SessionClosedByServer`; the client's next request fails with `Bad_SessionIdInvalid`.
+- server: `WithClientCertificateValidator(ClientCertificateValidator)` sets the application's own validator of client application certificates (a trust list changed while the server runs, a rejected list kept for an administrator). It replaces the validator of `WithClientCertificateTrustList` and is refused with `WithPushManagement`.
+
+---
+
 ## v1.33.0
 
 **Date:** 2026-11-15
