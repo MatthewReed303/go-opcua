@@ -572,9 +572,12 @@ node.SetValueWriter(func(ctx context.Context, w *server.ValueWrite) ua.StatusCod
 ```
 
 The writer gets the session (`w.Session`: its user identity, roles and
-certificate), the Variable and the value with the server's SourceTimestamp;
-its status is the result of the operation. The server does not store the
-value. AccessLevel, UserAccessLevel, AccessRestrictions and the
+certificate), the Variable and the DataValue as the client wrote it; its
+status is the result of the operation. The server does not store the value.
+A StatusCode or timestamps in the DataValue, which the server refuses for a
+value it stores (`Bad_WriteNotSupported`, Part 4 §5.10.4), are the writer's
+to take or refuse: some clients (asyncua) send a Good StatusCode with every
+write. AccessLevel, UserAccessLevel, AccessRestrictions and the
 `AccessController` are applied before the writer is called.
 
 Writers run off the goroutine that handles the requests of every client, so a

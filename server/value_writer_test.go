@@ -25,8 +25,8 @@ func writerVar(t *testing.T, srv *server.Server, name string, access ua.AccessLe
 	t.Helper()
 	ns := server.NewNodeNameSpace(srv, "urn:test:"+name)
 	n := server.NewVariableNode(ua.NewStringNodeID(ns.ID(), name), name, int32(1))
-	n.SetAttribute(ua.AttributeIDAccessLevel, server.DataValueFromValue(uint8(access)))
-	n.SetAttribute(ua.AttributeIDUserAccessLevel, server.DataValueFromValue(uint8(access)))
+	require.NoError(t, n.SetAttribute(ua.AttributeIDAccessLevel, server.DataValueFromValue(uint8(access))))
+	require.NoError(t, n.SetAttribute(ua.AttributeIDUserAccessLevel, server.DataValueFromValue(uint8(access))))
 	ns.AddNode(n)
 	ns.Objects().AddRef(n, id.HasComponent, true)
 	return n, ns
@@ -62,12 +62,23 @@ func TestValueWriter_TakesTheWrite(t *testing.T) {
 	require.NotNil(t, w)
 	require.True(t, w.NodeID.Equal(n.ID()))
 	require.Equal(t, int32(42), w.Value.Value.Value())
-	require.False(t, w.Value.SourceTimestamp.IsZero(), "the server stamps the written value")
+	require.Equal(t, byte(ua.DataValueValue), w.Value.EncodingMask, "the value as the client wrote it")
 	require.True(t, w.Session.ID().Equal(c.Session().SessionID()))
 
 	st, err = c.WriteValue(ctx, n.ID(), int32Value(101))
 	require.NoError(t, err)
 	require.Equal(t, ua.StatusBadOutOfRange, st)
+
+	// A StatusCode and a SourceTimestamp the client writes reach the writer
+	// (the server refuses them for a stored value).
+	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	st, err = c.WriteValue(ctx, n.ID(), &ua.DataValue{EncodingMask: ua.DataValueValue | ua.DataValueStatusCode | ua.DataValueSourceTimestamp,
+		Value: ua.MustVariant(int32(5)), Status: ua.StatusUncertain, SourceTimestamp: at})
+	require.NoError(t, err)
+	require.Equal(t, ua.StatusOK, st)
+	w = got.Load()
+	require.Equal(t, ua.StatusUncertain, w.Value.Status)
+	require.True(t, w.Value.SourceTimestamp.Equal(at))
 
 	dv, err := c.ReadValue(ctx, n.ID())
 	require.NoError(t, err)
@@ -143,7 +154,7 @@ func TestValueWriter_MixedRequest(t *testing.T) {
 	srv, url := testutil.NewTestServer(t)
 	taken, ns := writerVar(t, srv, "Taken", ua.AccessLevelTypeCurrentRead|ua.AccessLevelTypeCurrentWrite)
 	stored := server.NewVariableNode(ua.NewStringNodeID(ns.ID(), "Stored"), "Stored", int32(1))
-	stored.SetAttribute(ua.AttributeIDAccessLevel, server.DataValueFromValue(uint8(ua.AccessLevelTypeCurrentRead|ua.AccessLevelTypeCurrentWrite)))
+	require.NoError(t, stored.SetAttribute(ua.AttributeIDAccessLevel, server.DataValueFromValue(uint8(ua.AccessLevelTypeCurrentRead|ua.AccessLevelTypeCurrentWrite))))
 	ns.AddNode(stored)
 	ns.Objects().AddRef(stored, id.HasComponent, true)
 	taken.SetValueWriter(func(context.Context, *server.ValueWrite) ua.StatusCode { return ua.StatusBadCommunicationError })

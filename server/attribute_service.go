@@ -345,11 +345,6 @@ func (s *AttributeService) Write(ctx context.Context, sc *uasc.SecureChannel, r 
 			continue
 		}
 
-		if n.Value != nil && n.Value.EncodingMask&unsupportedWriteMask != 0 {
-			status[i] = ua.StatusBadWriteNotSupported
-			continue
-		}
-
 		node := ns.Node(n.NodeID)
 		if node != nil {
 			if st := checkAccessRestrictions(sc, node); st != ua.StatusOK {
@@ -371,6 +366,13 @@ func (s *AttributeService) Write(ctx context.Context, sc *uasc.SecureChannel, r 
 		deferWrite := func(dv *ua.DataValue) {
 			jobs = append(jobs, valueWriteJob{index: i, writer: writer, write: &ValueWrite{Session: sess.handle(), NodeID: n.NodeID, Value: dv}})
 		}
+		// The server stores no StatusCode or timestamps a client writes
+		// (Part 4 §5.10.4: Bad_WriteNotSupported); a writer gets them and
+		// decides.
+		if writer == nil && n.Value != nil && n.Value.EncodingMask&unsupportedWriteMask != 0 {
+			status[i] = ua.StatusBadWriteNotSupported
+			continue
+		}
 
 		if n.IndexRange != "" {
 			if n.AttributeID != ua.AttributeIDValue || n.Value == nil || n.Value.Value == nil {
@@ -390,14 +392,14 @@ func (s *AttributeService) Write(ctx context.Context, sc *uasc.SecureChannel, r 
 				status[i] = st
 				continue
 			}
+			if writer != nil {
+				deferWrite(&ua.DataValue{EncodingMask: ua.DataValueValue, Value: merged})
+				continue
+			}
 			dv := stampWritten(&ua.DataValue{
 				EncodingMask: ua.DataValueValue,
 				Value:        merged,
 			}, time.Now())
-			if writer != nil {
-				deferWrite(dv)
-				continue
-			}
 			status[i] = ns.SetAttribute(n.NodeID, n.AttributeID, dv)
 			continue
 		}
@@ -409,17 +411,17 @@ func (s *AttributeService) Write(ctx context.Context, sc *uasc.SecureChannel, r 
 			}
 		}
 
-		val := n.Value
-		if n.AttributeID == ua.AttributeIDValue && val != nil {
-			val = stampWritten(val, time.Now())
-		}
 		if writer != nil {
-			if val == nil {
+			if n.Value == nil {
 				status[i] = ua.StatusBadTypeMismatch
 				continue
 			}
-			deferWrite(val)
+			deferWrite(n.Value)
 			continue
+		}
+		val := n.Value
+		if n.AttributeID == ua.AttributeIDValue && val != nil {
+			val = stampWritten(val, time.Now())
 		}
 		status[i] = ns.SetAttribute(n.NodeID, n.AttributeID, val)
 

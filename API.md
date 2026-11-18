@@ -2110,7 +2110,7 @@ type ClientCertificateValidator func(certDER []byte) error
 type ValueWrite struct {
     Session *Session
     NodeID  *ua.NodeID
-    Value   *ua.DataValue // with the server's SourceTimestamp; an IndexRange already merged
+    Value   *ua.DataValue // as the client wrote it (StatusCode, timestamps); an IndexRange already merged
 }
 
 type ValueWriter func(ctx context.Context, w *ValueWrite) ua.StatusCode
@@ -2119,7 +2119,9 @@ type ValueWriter func(ctx context.Context, w *ValueWrite) ua.StatusCode
 A Variable with a `ValueWriter` (`Node.SetValueWriter`) hands clients' Writes
 of its Value to the application instead of storing them: the writer's status
 is the result of the operation, and the writer updates the Variable itself
-(`Node.SetAttribute`, `Server.ChangeNotification`). AccessLevel,
+(`Node.SetAttribute`, `Server.ChangeNotification`). A StatusCode or
+timestamps in the written DataValue, which the server refuses for a stored
+value (`Bad_WriteNotSupported`), reach the writer to take or refuse. AccessLevel,
 UserAccessLevel, AccessRestrictions and the `AccessController` are applied
 first. Writers run off the request dispatcher: a slow one (a device write and
 read-back) holds up only its own Write request, which keeps its in-flight slot
