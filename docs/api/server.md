@@ -4761,9 +4761,11 @@ type ValueWrite struct {
 	Session *Session
 	// NodeID is the Variable written.
 	NodeID *ua.NodeID
-	// Value is the value the client wrote, with the server's SourceTimestamp
-	// (the server stamps a written value, as it does for a stored one). With
-	// an IndexRange it is the current value with the range replaced.
+	// Value is the DataValue as the client wrote it. Its StatusCode and
+	// timestamps, which the server refuses for a value it stores
+	// (Bad_WriteNotSupported, Part 4 §5.10.4), are the writer's to take or
+	// refuse. With an IndexRange it is the current value with the range
+	// replaced, without status or timestamps.
 	Value *ua.DataValue
 }
 ```
