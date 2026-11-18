@@ -8,6 +8,10 @@
 - server: `Server.CloseSession(sessionID)` ends a session on the application's behalf (a user disabled or given another role): subscriptions deleted, queued Publish requests answered with `Bad_SessionClosed`, continuation points released, the `SessionObserver` told `SessionClosedByServer`; the client's next request fails with `Bad_SessionIdInvalid`.
 - server: `WithClientCertificateValidator(ClientCertificateValidator)` sets the application's own validator of client application certificates (a trust list changed while the server runs, a rejected list kept for an administrator). It replaces the validator of `WithClientCertificateTrustList` and is refused with `WithPushManagement`.
 
+### Fixed
+
+- server: SetTriggering (Part 4 §5.12.1.6, §5.12.5) keeps the links it is given: when a triggering item's notifications are published, the samples its linked items in Sampling mode queued are published with them (a linked item in Reporting mode reports by itself, a Disabled one has nothing). Links are added before they are removed; a linked item must be one of the triggering item's subscription; deleting either item deletes the link. A request with nothing to add or remove answers `Bad_NothingToDo`, and one whose triggering item is not in the subscription it names `Bad_MonitoredItemIdInvalid`. The links used to be validated and not kept, so a triggered item in Sampling mode was never reported.
+
 ---
 
 ## v1.33.0
