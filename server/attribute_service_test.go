@@ -573,8 +573,8 @@ func TestAttributeService_Write_IndexRangeAndEncodingMask(t *testing.T) {
 		t.Run(tc.name+" with a StatusCode and a timestamp", func(t *testing.T) {
 			name := "ro_" + strings.ReplaceAll(tc.name, " ", "_")
 			v := ns.AddNewVariableStringNode(name, int32(5))
-			v.SetAttribute(ua.AttributeIDAccessLevel, DataValueFromValue(tc.access))
-			v.SetAttribute(ua.AttributeIDUserAccessLevel, DataValueFromValue(tc.user))
+			require.NoError(t, v.SetAttribute(ua.AttributeIDAccessLevel, DataValueFromValue(tc.access)))
+			require.NoError(t, v.SetAttribute(ua.AttributeIDUserAccessLevel, DataValueFromValue(tc.user)))
 			obj.AddRef(v, id.HasComponent, true)
 			for _, mask := range []byte{ua.DataValueValue, ua.DataValueValue | ua.DataValueStatusCode, ua.DataValueValue | ua.DataValueSourceTimestamp} {
 				req := &ua.WriteRequest{
