@@ -344,16 +344,27 @@ func (s *AttributeService) Write(ctx context.Context, sc *uasc.SecureChannel, r 
 			continue
 		}
 
-		if n.Value != nil && n.Value.EncodingMask&unsupportedWriteMask != 0 {
-			status[i] = ua.StatusBadWriteNotSupported
-			continue
-		}
-
+		// Whether the Value may be written at all comes before what the
+		// DataValue carries: a Variable whose AccessLevel has no CurrentWrite
+		// is Bad_NotWritable, and one whose UserAccessLevel has none is
+		// Bad_UserAccessDenied (Part 3 §5.6.2, Part 4 §5.10.4), whatever
+		// StatusCode or timestamps the client sent with the value.
 		if node := ns.Node(n.NodeID); node != nil {
 			if st := checkAccessRestrictions(sc, node); st != ua.StatusOK {
 				status[i] = st
 				continue
 			}
+			if n.AttributeID == ua.AttributeIDValue {
+				if st := node.AccessStatus(ua.AccessLevelTypeCurrentWrite); st != ua.StatusOK {
+					status[i] = st
+					continue
+				}
+			}
+		}
+
+		if n.Value != nil && n.Value.EncodingMask&unsupportedWriteMask != 0 {
+			status[i] = ua.StatusBadWriteNotSupported
+			continue
 		}
 
 		if n.IndexRange != "" {

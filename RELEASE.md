@@ -1,5 +1,13 @@
 # go-opcua Releases
 
+## Unreleased
+
+### Fixed
+
+- server: a Write of the Value of a Variable whose AccessLevel has no CurrentWrite is `Bad_NotWritable`, and of one whose UserAccessLevel has none `Bad_UserAccessDenied` (Part 3 §5.6.2, Part 4 §5.10.4), also when the client sends a StatusCode or timestamps with the value; it was `Bad_WriteNotSupported`, which tells the client to write the value alone. asyncua sends a Good StatusCode with every write. AccessRestrictions are checked before the DataValue's content too.
+
+---
+
 ## v1.33.0
 
 **Date:** 2026-11-15
