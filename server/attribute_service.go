@@ -345,23 +345,28 @@ func (s *AttributeService) Write(ctx context.Context, sc *uasc.SecureChannel, r 
 			continue
 		}
 
+		// Whether the Value may be written at all comes before what the
+		// DataValue carries: a Variable whose AccessLevel has no CurrentWrite
+		// is Bad_NotWritable, and one whose UserAccessLevel has none is
+		// Bad_UserAccessDenied (Part 3 §5.6.2, Part 4 §5.10.4), whatever
+		// StatusCode or timestamps the client sent with the value.
 		node := ns.Node(n.NodeID)
 		if node != nil {
 			if st := checkAccessRestrictions(sc, node); st != ua.StatusOK {
 				status[i] = st
 				continue
 			}
-		}
-		// A Value a ValueWriter takes: checked here as NodeNameSpace checks a
-		// stored one, written by the writer after the loop.
-		var writer ValueWriter
-		if node != nil && n.AttributeID == ua.AttributeIDValue && sess != nil {
-			if writer = node.ValueWriter(); writer != nil {
+			if n.AttributeID == ua.AttributeIDValue {
 				if st := node.AccessStatus(ua.AccessLevelTypeCurrentWrite); st != ua.StatusOK {
 					status[i] = st
 					continue
 				}
 			}
+		}
+		// A Value a ValueWriter takes, written by the writer after the loop.
+		var writer ValueWriter
+		if node != nil && n.AttributeID == ua.AttributeIDValue && sess != nil {
+			writer = node.ValueWriter()
 		}
 		deferWrite := func(dv *ua.DataValue) {
 			jobs = append(jobs, valueWriteJob{index: i, writer: writer, write: &ValueWrite{Session: sess.handle(), NodeID: n.NodeID, Value: dv}})

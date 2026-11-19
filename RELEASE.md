@@ -11,6 +11,7 @@
 ### Fixed
 
 - server: SetTriggering (Part 4 §5.12.1.6, §5.12.5) keeps the links it is given: when a triggering item's notifications are published, the samples its linked items in Sampling mode queued are published with them (a linked item in Reporting mode reports by itself, a Disabled one has nothing). Links are added before they are removed; a linked item must be one of the triggering item's subscription; deleting either item deletes the link. A request with nothing to add or remove answers `Bad_NothingToDo`, and one whose triggering item is not in the subscription it names `Bad_MonitoredItemIdInvalid`. The links used to be validated and not kept, so a triggered item in Sampling mode was never reported.
+- server: a Write of the Value of a Variable whose AccessLevel has no CurrentWrite is `Bad_NotWritable`, and of one whose UserAccessLevel has none `Bad_UserAccessDenied` (Part 3 §5.6.2, Part 4 §5.10.4), also when the client sends a StatusCode or timestamps with the value; it was `Bad_WriteNotSupported`, which tells the client to write the value alone. asyncua sends a Good StatusCode with every write. AccessRestrictions are checked before the DataValue's content too.
 
 ---
 
